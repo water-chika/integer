@@ -1,0 +1,3 @@
+[submodule "execute_binary_code"]
+	path = execute_binary_code
+	url = https://github.com/water-chika/execute_binary_code
