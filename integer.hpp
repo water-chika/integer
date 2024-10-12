@@ -19,6 +19,9 @@ namespace water {
 		private:
 			std::vector<uint32_t> m_limbs;
 			friend unsigned_integer operator+(const unsigned_integer& lhs, const unsigned_integer& rhs);
+			friend unsigned_integer operator-(const unsigned_integer& lhs, const unsigned_integer& rhs);
+			friend unsigned_integer operator*(const unsigned_integer& lhs, const unsigned_integer& rhs);
+			friend unsigned_integer div(const unsigned_integer& lhs, const unsigned_integer& rhs);
 			friend std::ostream& operator<<(std::ostream& out, const unsigned_integer& n);
 		};
 
@@ -84,6 +87,72 @@ namespace water {
 			else {
 				return *p1;
 			}
+		}
+
+		bool sub_limbs(const uint32_t* lhs, const uint32_t* rhs, const uint32_t* res, size_t size) {
+			auto codes = std::vector<uint8_t>{
+				0x8B, 0b00'000'001,
+				0x13, 0b00'000'010,
+				0b0100'0001, 0x19, 0b00'000'000,
+				0b0100'1000, 0xFF, 0b11'000'001,
+				0b0100'1000, 0xFF, 0b11'000'001,
+				0b0100'1000, 0xFF, 0b11'000'001,
+				0b0100'1000, 0xFF, 0b11'000'001,
+				0b0100'1000, 0xFF, 0b11'000'010,
+				0b0100'1000, 0xFF, 0b11'000'010,
+				0b0100'1000, 0xFF, 0b11'000'010,
+				0b0100'1000, 0xFF, 0b11'000'010,
+				0b0100'1001, 0xFF, 0b11'000'000,
+				0b0100'1001, 0xFF, 0b11'000'000,
+				0b0100'1001, 0xFF, 0b11'000'000,
+				0b0100'1001, 0xFF, 0b11'000'000,
+				0b0100'1001, 0xFF, 0b11'001'001,
+				0x75, static_cast<uint8_t>(-17 - 16 - 7 - 8),
+				0x0F, 0x92, 0b11'000'000,
+				0xc3
+			};
+			return static_cast<bool>(0xff & binary_code{ codes }.execute(lhs, rhs, res, size));
+		}
+
+		unsigned_integer operator-(const unsigned_integer& lhs, const unsigned_integer& rhs) {
+			assert(lhs.m_limbs.size() >= rhs.m_limbs.size());
+			std::vector<uint32_t> limbs(lhs.m_limbs.size());
+			bool borrow = sub_limbs(lhs.m_limbs.data(), rhs.m_limbs.data(), limbs.data(), rhs.m_limbs.size());
+			if (borrow) {
+				size_t i = rhs.m_limbs.size();
+				for (; i < lhs.m_limbs.size(); i++) {
+					if (lhs.m_limbs[i] == 0) {
+						limbs[i] = static_cast<uint32_t>(-1);
+					}
+					else {
+						break;
+					}
+				}
+				if (i < lhs.m_limbs.size()) {
+					limbs[i]--;
+				}
+				else {
+					throw std::overflow_error{"subtract overflow"};
+				}
+			}
+
+			size_t i = limbs.size();
+			while (i > 0 && limbs[i-1] == 0) {
+				--i;
+			}
+			limbs.resize(i);
+			
+			auto res = unsigned_integer{};
+			res.m_limbs = std::move(limbs);
+			return res;
+		}
+
+		unsigned_integer operator*(const unsigned_integer& lhs, const unsigned_integer& rhs) {
+			return {};
+		}
+
+		unsigned_integer div(const unsigned_integer& lhs, const unsigned_integer& rhs) {
+			return {};
 		}
 
 		std::ostream& operator<<(std::ostream& out, const unsigned_integer& n) {

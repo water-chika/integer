@@ -8,6 +8,6 @@ int main() {
 	}
 	x = x + x;
 
-	std::cout << x << std::endl;
+	std::cout << x-1 << std::endl;
 	return 0;
 }
