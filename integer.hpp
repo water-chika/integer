@@ -129,7 +129,7 @@ namespace water {
 					}
 				}
 				if (i < lhs.m_limbs.size()) {
-					limbs[i]--;
+					limbs[i] = lhs.m_limbs[i] - 1;
 				}
 				else {
 					throw std::overflow_error{"subtract overflow"};
