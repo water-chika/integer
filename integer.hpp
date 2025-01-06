@@ -7,25 +7,18 @@
 
 namespace water {
 	namespace integer {
-		class unsigned_integer {
+		class limbs {
 		public:
-			unsigned_integer() = default;
-			unsigned_integer(uint32_t i) {
-				if (i > 0) {
-					m_limbs.resize(1);
-					m_limbs[0] = i;
-				}
+			limbs(std::vector<uint32_t> limbs) : m_limbs{ limbs } {}
+			void reset() {
+				m_limbs.resize(0);
 			}
 		private:
 			std::vector<uint32_t> m_limbs;
-			friend unsigned_integer operator+(const unsigned_integer& lhs, const unsigned_integer& rhs);
-			friend unsigned_integer operator-(const unsigned_integer& lhs, const unsigned_integer& rhs);
-			friend unsigned_integer operator*(const unsigned_integer& lhs, const unsigned_integer& rhs);
-			friend unsigned_integer div(const unsigned_integer& lhs, const unsigned_integer& rhs);
-			friend std::ostream& operator<<(std::ostream& out, const unsigned_integer& n);
+			friend limbs operator+(const limbs& lhs, const limbs& rhs);
+			friend limbs operator-(const limbs& lhs, const limbs& rhs);
+			friend std::ostream& operator<<(std::ostream& out, const limbs& n);
 		};
-
-
 		bool add_limbs(const uint32_t* lhs, const uint32_t* rhs, const uint32_t* res, size_t size) {
 			auto codes = std::vector<uint8_t>{
 				0x8B, 0b00'000'001,
@@ -44,15 +37,15 @@ namespace water {
 				0b0100'1001, 0xFF, 0b11'000'000,
 				0b0100'1001, 0xFF, 0b11'000'000,
 				0b0100'1001, 0xFF, 0b11'001'001,
-				0x75, static_cast<uint8_t>(-17-16-7-8),
+				0x75, static_cast<uint8_t>(-17 - 16 - 7 - 8),
 				0x0F, 0x92, 0b11'000'000,
 				0xc3
 			};
 			return static_cast<bool>(0xff & binary_code{ codes }.execute(lhs, rhs, res, size));
 		}
 
-		unsigned_integer operator+(const unsigned_integer& lhs, const unsigned_integer& rhs) {
-			const unsigned_integer* p1 = nullptr, *p2 = nullptr;
+		limbs operator+(const limbs& lhs, const limbs& rhs) {
+			const limbs* p1 = nullptr, * p2 = nullptr;
 			if (lhs.m_limbs.size() > rhs.m_limbs.size()) {
 				p1 = &lhs;
 				p2 = &rhs;
@@ -79,10 +72,7 @@ namespace water {
 						limbs[i] = 1;
 					}
 				}
-
-				auto res = unsigned_integer{};
-				res.m_limbs = std::move(limbs);
-				return res;
+				return { limbs };
 			}
 			else {
 				return *p1;
@@ -114,7 +104,7 @@ namespace water {
 			return static_cast<bool>(0xff & binary_code{ codes }.execute(lhs, rhs, res, size));
 		}
 
-		unsigned_integer operator-(const unsigned_integer& lhs, const unsigned_integer& rhs) {
+		limbs operator-(const limbs& lhs, const limbs& rhs) {
 			assert(lhs.m_limbs.size() >= rhs.m_limbs.size());
 			std::vector<uint32_t> limbs(lhs.m_limbs.size());
 			bool borrow = sub_limbs(lhs.m_limbs.data(), rhs.m_limbs.data(), limbs.data(), rhs.m_limbs.size());
@@ -132,35 +122,55 @@ namespace water {
 					limbs[i] = lhs.m_limbs[i] - 1;
 				}
 				else {
-					throw std::overflow_error{"subtract overflow"};
+					throw std::overflow_error{ "subtract overflow" };
 				}
 			}
 
 			size_t i = limbs.size();
-			while (i > 0 && limbs[i-1] == 0) {
+			while (i > 0 && limbs[i - 1] == 0) {
 				--i;
 			}
 			limbs.resize(i);
-			
-			auto res = unsigned_integer{};
-			res.m_limbs = std::move(limbs);
-			return res;
+
+			return { limbs };
 		}
 
-		unsigned_integer operator*(const unsigned_integer& lhs, const unsigned_integer& rhs) {
-			return {};
-		}
-
-		unsigned_integer div(const unsigned_integer& lhs, const unsigned_integer& rhs) {
-			return {};
-		}
-
-		std::ostream& operator<<(std::ostream& out, const unsigned_integer& n) {
+		std::ostream& operator<<(std::ostream& out, const limbs& n) {
 			auto i = n.m_limbs.size();
 			while (i-- > 0) {
 				out << n.m_limbs[i] << ' ';
 			}
 
+			return out;
+		}
+
+		class unsigned_integer {
+		public:
+			unsigned_integer() = default;
+			unsigned_integer(uint32_t i) : m_limbs{ std::vector{i} } {
+				if (i == 0) {
+					m_limbs.reset();
+				}
+			}
+			unsigned_integer(limbs limbs) : m_limbs{ limbs } {}
+		private:
+			limbs m_limbs;
+			friend unsigned_integer operator+(const unsigned_integer& lhs, const unsigned_integer& rhs);
+			friend unsigned_integer operator-(const unsigned_integer& lhs, const unsigned_integer& rhs);
+			friend unsigned_integer operator*(const unsigned_integer& lhs, const unsigned_integer& rhs);
+			friend unsigned_integer div(const unsigned_integer& lhs, const unsigned_integer& rhs);
+			friend std::ostream& operator<<(std::ostream& out, const unsigned_integer& n);
+		};
+		unsigned_integer operator+(const unsigned_integer& lhs, const unsigned_integer& rhs) {
+			return lhs.m_limbs + rhs.m_limbs;
+		}
+
+		unsigned_integer operator-(const unsigned_integer& lhs, const unsigned_integer& rhs) {
+			return lhs.m_limbs - rhs.m_limbs;
+		}
+
+		std::ostream& operator<<(std::ostream& out, const unsigned_integer& n) {
+			out << n.m_limbs;
 			return out;
 		}
 
